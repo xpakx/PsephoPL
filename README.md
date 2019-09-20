@@ -1,6 +1,6 @@
 ## PsephoPL
 
-I write this to analyze election results data for the Poland. I'm mainly interested in some geographical correlations (e.g. between urbanization and voting for the Law and Justice party), basic alternative scenarios (e.g. what would happen if 100 voters of one party made different decision) and voting power defined as in Gelman et al. 2002.
+I'm writing this to analyze election results data for the Poland. I'm mainly interested in some geographical correlations (e.g. between urbanization and voting for the Law and Justice party), basic alternative scenarios (e.g. what would happen if 100 voters of one party made different decision) and voting power defined as in Gelman et al. 2002.
 
 Poland uses Jefferson-D'Hondt seat allocation method in parliamentary elections. It's believed to tend to favour the larger parties. 
 
