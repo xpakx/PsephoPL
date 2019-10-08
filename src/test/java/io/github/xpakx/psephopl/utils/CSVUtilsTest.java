@@ -85,7 +85,28 @@ public class CSVUtilsTest
     assertThat(result.get(1), is("two"));
     assertThat(result.get(2), is("three"));
   }
-  
+ 
+  @Test
+  public void shouldContainsEmptyCells()
+  {
+    //given
+    String line = "one,,three";
+    String line2 = "one,,,,five";
+    
+    //when
+    List<String> result = CSVUtils.parseLine(line);
+    List<String> result2 = CSVUtils.parseLine(line2);
+    System.out.println(result2);
+    
+    //then
+    assertNotNull(result);
+    assertNotNull(result2);
+    assertThat(result.size(), is(3));
+    assertThat(result2.size(), is(5));
+    assertThat(result.get(0), is("one"));
+    assertThat(result.get(1), is(""));
+    assertThat(result.get(2), is("three"));
+  }
   
  
 }
