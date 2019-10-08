@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.FileReader;
+import java.io.File;
+import java.net.URISyntaxException;
 
 import java.util.stream.Collectors;
 
@@ -12,6 +15,23 @@ public class CSVUtils
 {
   private static final String separator = ",";
   
+  
+  public static List<List<String>> readFile(String fileName)
+  {    
+    List<List<String>> result;
+    try (BufferedReader br =  
+      new BufferedReader(
+      new FileReader(new File(CSVUtils.class.getClassLoader().getResource(fileName).getFile())))) 
+    {
+      result = parseFile(br);
+    } 
+    catch(IOException e)
+    {
+      result = null;
+      System.out.println("ets");
+    }
+    return result;
+  }
   
   public static List<List<String>> parseFile(BufferedReader fileReader) throws IOException
   {
