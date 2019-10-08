@@ -6,21 +6,21 @@ import java.util.Arrays;
 
 public class CSVUtils 
 {
- 
+  private static final String separator = ",";
 
   public static List<String> parseLine(String line)
+  {
+    return parseLine(line, separator);
+  }
+  
+  public static List<String> parseLine(String line, String customSeparator)
   {
     List<String> result = new ArrayList<String>();
     if(line != null && !line.isEmpty())
     {
-      result = Arrays.asList(line.split(","));
+      result = Arrays.asList(line.split(customSeparator));
     }
     return result;
-  }
-  
-  public static List<String> parseLine(String line, char customSeparator)
-  {
-    return null;
   }
   
  

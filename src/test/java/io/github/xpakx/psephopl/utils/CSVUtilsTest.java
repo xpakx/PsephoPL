@@ -76,7 +76,7 @@ public class CSVUtilsTest
     String line = "one;two;three";
     
     //when
-    List<String> result = CSVUtils.parseLine(line, ';');
+    List<String> result = CSVUtils.parseLine(line, ";");
     
     //then
     assertNotNull(result);
