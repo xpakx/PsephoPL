@@ -69,6 +69,23 @@ public class CSVUtilsTest
     assertThat(result.get(2), is("three"));
   }
   
+  @Test
+  public void shouldSplitLineByCustomSeparator()
+  {
+    //given
+    String line = "one;two;three";
+    
+    //when
+    List<String> result = CSVUtils.parseLine(line, ';');
+    
+    //then
+    assertNotNull(result);
+    assertThat(result.size(), is(3));
+    assertThat(result.get(0), is("one"));
+    assertThat(result.get(1), is("two"));
+    assertThat(result.get(2), is("three"));
+  }
+  
   
  
 }

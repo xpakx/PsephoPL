@@ -18,5 +18,10 @@ public class CSVUtils
     return result;
   }
   
+  public static List<String> parseLine(String line, char customSeparator)
+  {
+    return null;
+  }
+  
  
 }
