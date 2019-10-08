@@ -65,7 +65,7 @@ public class CSVUtilsTest
     assertNotNull(result);
     assertThat(result.size(), is(3));
     assertThat(result.get(0), is("one"));
-    assertThat(result.get(1), is("one"));
+    assertThat(result.get(1), is("two"));
     assertThat(result.get(2), is("three"));
   }
   

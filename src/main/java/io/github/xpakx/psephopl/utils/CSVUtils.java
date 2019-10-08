@@ -2,6 +2,7 @@ package io.github.xpakx.psephopl.utils;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class CSVUtils 
 {
@@ -9,7 +10,12 @@ public class CSVUtils
 
   public static List<String> parseLine(String line)
   {
-    return new ArrayList<String>();
+    List<String> result = new ArrayList<String>();
+    if(line != null && !line.isEmpty())
+    {
+      result = Arrays.asList(line.split(","));
+    }
+    return result;
   }
   
  
