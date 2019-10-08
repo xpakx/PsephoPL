@@ -112,9 +112,13 @@ public class CSVUtilsTest
   public void shouldReadWholeFile() throws Exception
   {
     //given
+    List<String> list = new ArrayList<String>();
+    list.add("one,two,three");
+    list.add("four,five,six");
+    list.add("seven,eight,nine");
     BufferedReader bufferedReader = mock(BufferedReader.class);
-    when(bufferedReader.readLine())
-    .thenReturn("one,two,three", "four,five,six", "seven,eight,nine");
+    when(bufferedReader.lines())
+    .thenReturn(list.stream());
     
     //when
     List<List<String>> result = CSVUtils.parseFile(bufferedReader);

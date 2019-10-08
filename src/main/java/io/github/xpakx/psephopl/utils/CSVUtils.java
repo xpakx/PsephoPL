@@ -6,6 +6,8 @@ import java.util.Arrays;
 import java.io.BufferedReader;
 import java.io.IOException;
 
+import java.util.stream.Collectors;
+
 public class CSVUtils 
 {
   private static final String separator = ",";
@@ -13,7 +15,10 @@ public class CSVUtils
   
   public static List<List<String>> parseFile(BufferedReader fileReader) throws IOException
   {
-    return null;
+    return fileReader
+              .lines()
+              .map(line -> parseLine(line))
+              .collect(Collectors.toList());
   }
   
   public static List<String> parseLine(String line)
