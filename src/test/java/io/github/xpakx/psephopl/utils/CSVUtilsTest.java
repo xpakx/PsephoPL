@@ -18,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.io.BufferedReader;
 
 public class CSVUtilsTest 
 {
@@ -96,7 +97,6 @@ public class CSVUtilsTest
     //when
     List<String> result = CSVUtils.parseLine(line);
     List<String> result2 = CSVUtils.parseLine(line2);
-    System.out.println(result2);
     
     //then
     assertNotNull(result);
@@ -106,6 +106,28 @@ public class CSVUtilsTest
     assertThat(result.get(0), is("one"));
     assertThat(result.get(1), is(""));
     assertThat(result.get(2), is("three"));
+  }
+  
+  @Test 
+  public void shouldReadWholeFile() throws Exception
+  {
+    //given
+    BufferedReader bufferedReader = mock(BufferedReader.class);
+    when(bufferedReader.readLine())
+    .thenReturn("one,two,three", "four,five,six", "seven,eight,nine");
+    
+    //when
+    List<List<String>> result = CSVUtils.parseFile(bufferedReader);
+    
+    //then
+    assertNotNull(result);
+    assertThat(result.size(), is(3));
+    assertNotNull(result.get(0));
+    assertThat(result.get(0).size(), is(3));
+    assertNotNull(result.get(1));
+    assertThat(result.get(1).size(), is(3));
+    assertNotNull(result.get(2));
+    assertThat(result.get(2).size(), is(3));
   }
   
  
