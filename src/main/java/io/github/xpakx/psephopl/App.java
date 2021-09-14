@@ -1,17 +1,27 @@
 package io.github.xpakx.psephopl;
 
-import io.github.xpakx.psephopl.utils.CSVUtils;
-import java.util.List;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
 
-/**
- * Hello world!
- *
- */
 public class App 
 {
     public static void main( String[] args )
     {
-        List<List<String>> list = CSVUtils.readFile("2015-gl-lis-okr.csv");
-        System.out.println( list );
+        App app = new App();
+        app.start();
+    }
+
+    private void start() {
+        SparkSession session = SparkSession.builder()
+                .master("local")
+                .getOrCreate();
+
+        Dataset<Row> elections2005DataSet = session.read()
+                .format("csv")
+                .option("header", "true")
+                .load("src/main/resources/2015-gl-lis-okr.csv");
+
+        elections2005DataSet.show(5);
     }
 }
