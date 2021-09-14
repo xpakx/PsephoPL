@@ -4,6 +4,9 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
+import static org.apache.spark.sql.functions.substring;
+import static org.apache.spark.sql.functions.concat;
+
 public class App 
 {
     public static void main( String[] args )
@@ -17,11 +20,37 @@ public class App
                 .master("local")
                 .getOrCreate();
 
-        Dataset<Row> elections2005DataSet = session.read()
+        Dataset<Row> elections2005ByGminasDataSet = session.read()
+                .format("csv")
+                .option("header", "true")
+                .load("src/main/resources/2015-gl-lis-gm.csv");
+
+        Dataset<Row> elections2005ByElectoralDistrictDataSet = session.read()
                 .format("csv")
                 .option("header", "true")
                 .load("src/main/resources/2015-gl-lis-okr.csv");
 
-        elections2005DataSet.show(5);
+        Dataset<Row> degurbaDataSet = session.read()
+                .format("csv")
+                .option("header", "true")
+                .load("src/main/resources/DGURBA_PT_2014.csv");
+        degurbaDataSet = degurbaDataSet
+                .filter(degurbaDataSet.col("CNTR_CODE").equalTo("PL"));
+        degurbaDataSet = degurbaDataSet
+                .withColumn("TERC",
+                        concat(
+                                substring(degurbaDataSet.col("NSI"),1,2),
+                                substring(degurbaDataSet.col("NSI"),5,4)
+                        ))
+                .withColumnRenamed("DGURBA_CLA", "DGURBA")
+                .drop("CNTR_CODE")
+                .drop("NSI")
+                .drop("LAU_CODE");
+
+
+
+        //elections2005ByGminasDataSet.show(5);
+        //elections2005ByElectoralDistrictDataSet.show(5);
+        degurbaDataSet.show(5);
     }
 }
