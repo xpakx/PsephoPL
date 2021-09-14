@@ -1,11 +1,11 @@
 package io.github.xpakx.psephopl;
 
+import org.apache.spark.ml.stat.Correlation;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
-import static org.apache.spark.sql.functions.substring;
-import static org.apache.spark.sql.functions.concat;
+import static org.apache.spark.sql.functions.*;
 
 public class App 
 {
@@ -20,12 +20,12 @@ public class App
                 .master("local")
                 .getOrCreate();
 
-        Dataset<Row> elections2005ByGminasDataSet = session.read()
+        Dataset<Row> elections2015ByGminasDataSet = session.read()
                 .format("csv")
                 .option("header", "true")
                 .load("src/main/resources/2015-gl-lis-gm.csv");
 
-        Dataset<Row> elections2005ByElectoralDistrictDataSet = session.read()
+        Dataset<Row> elections2015ByElectoralDistrictDataSet = session.read()
                 .format("csv")
                 .option("header", "true")
                 .load("src/main/resources/2015-gl-lis-okr.csv");
@@ -49,15 +49,12 @@ public class App
 
 
         System.out.println(degurbaDataSet.count());
-        Dataset<Row> gminasWithDegurba = elections2005ByGminasDataSet
+        Dataset<Row> gminasWithDegurba = elections2015ByGminasDataSet
                 .join(
                         degurbaDataSet,
-                        elections2005ByGminasDataSet.col("TERYT").equalTo(degurbaDataSet.col("TERC")),
+                        elections2015ByGminasDataSet.col("TERYT").equalTo(degurbaDataSet.col("TERC")),
                         "inner"
                 );
-
-        //elections2005ByGminasDataSet.show(5);
-        //elections2005ByElectoralDistrictDataSet.show(5);
         gminasWithDegurba.show(5);
         System.out.println(gminasWithDegurba.count());
     }
