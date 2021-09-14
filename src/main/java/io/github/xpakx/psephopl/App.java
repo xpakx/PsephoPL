@@ -39,8 +39,8 @@ public class App
         degurbaDataSet = degurbaDataSet
                 .withColumn("TERC",
                         concat(
-                                substring(degurbaDataSet.col("NSI"),1,2),
-                                substring(degurbaDataSet.col("NSI"),5,4)
+                                substring(degurbaDataSet.col("NSI"),2,2),
+                                substring(degurbaDataSet.col("NSI"),6,4)
                         ))
                 .withColumnRenamed("DGURBA_CLA", "DGURBA")
                 .drop("CNTR_CODE")
@@ -48,9 +48,17 @@ public class App
                 .drop("LAU_CODE");
 
 
+        System.out.println(degurbaDataSet.count());
+        Dataset<Row> gminasWithDegurba = elections2005ByGminasDataSet
+                .join(
+                        degurbaDataSet,
+                        elections2005ByGminasDataSet.col("TERYT").equalTo(degurbaDataSet.col("TERC")),
+                        "inner"
+                );
 
         //elections2005ByGminasDataSet.show(5);
         //elections2005ByElectoralDistrictDataSet.show(5);
-        degurbaDataSet.show(5);
+        gminasWithDegurba.show(5);
+        System.out.println(gminasWithDegurba.count());
     }
 }
