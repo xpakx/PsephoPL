@@ -1,11 +1,11 @@
 package io.github.xpakx.psephopl;
 
+import io.github.xpakx.psephopl.utils.GminasDataTransformer;
 import org.apache.spark.ml.linalg.DenseMatrix;
 import io.github.xpakx.psephopl.utils.DataLoader;
 import io.github.xpakx.psephopl.utils.DegurbaTransformer;
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.stat.Correlation;
-import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -31,43 +31,8 @@ public class App
         Dataset<Row> elections2015ByElectoralDistrictDataSet = loader.loadFromCsv("2015-gl-lis-okr.csv");
         Dataset<Row> degurbaDataSet = loader.loadFromCsv("DGURBA_PT_2014.csv");
 
-        degurbaDataSet = DegurbaTransformer.of(degurbaDataSet)
-                .filterByCountry("PL")
-                .transformToTERCtoDEGURBATable()
-                .get();
-
-
-        elections2015ByGminasDataSet = elections2015ByGminasDataSet
-                .withColumn("PiS", colToInt("1 - Komitet Wyborczy Prawo i Sprawiedliwość"))
-                .drop("1 - Komitet Wyborczy Prawo i Sprawiedliwość")
-                .withColumn("PO", colToInt("2 - Komitet Wyborczy Platforma Obywatelska RP"))
-                .drop("2 - Komitet Wyborczy Platforma Obywatelska RP")
-                .withColumn("Razem", colToInt("3 - Komitet Wyborczy Partia Razem"))
-                .drop("3 - Komitet Wyborczy Partia Razem")
-                .withColumn("Korwin", colToInt("4 - Komitet Wyborczy KORWiN"))
-                .drop("4 - Komitet Wyborczy KORWiN")
-                .withColumn("PSL", colToInt("5 - Komitet Wyborczy Polskie Stronnictwo Ludowe"))
-                .drop("5 - Komitet Wyborczy Polskie Stronnictwo Ludowe")
-                .withColumn("SLD", colToInt("6 - Koalicyjny Komitet Wyborczy Zjednoczona Lewica SLD+TR+PPS+UP+Zieloni"))
-                .drop("6 - Koalicyjny Komitet Wyborczy Zjednoczona Lewica SLD+TR+PPS+UP+Zieloni")
-                .withColumn("Kukiz", colToInt("7 - Komitet Wyborczy Wyborców „Kukiz'15”"))
-                .drop("7 - Komitet Wyborczy Wyborców „Kukiz'15”")
-                .withColumn("N", colToInt("8 - Komitet Wyborczy Nowoczesna Ryszarda Petru"))
-                .drop("8 - Komitet Wyborczy Nowoczesna Ryszarda Petru")
-                .withColumn("TOTAL_VOTES", colToInt("Głosy ważne"))
-                .drop("Głosy ważne")
-                .na().fill(0, new String[]{"PiS", "PO", "Razem", "Korwin", "PSL", "SLD", "Kukiz", "N"});
-
-        elections2015ByGminasDataSet = elections2015ByGminasDataSet
-                .withColumn("PiS%", col("PiS").divide(col("TOTAL_VOTES")))
-                .withColumn("PO%", col("PO").divide(col("TOTAL_VOTES")))
-                .withColumn("Razem%", col("Razem").divide(col("TOTAL_VOTES")))
-                .withColumn("Korwin%", col("Korwin").divide(col("TOTAL_VOTES")))
-                .withColumn("PSL%", col("PSL").divide(col("TOTAL_VOTES")))
-                .withColumn("SLD%", col("SLD").divide(col("TOTAL_VOTES")))
-                .withColumn("Kukiz%", col("Kukiz").divide(col("TOTAL_VOTES")))
-                .withColumn("N%", col("N").divide(col("TOTAL_VOTES")))
-                .na().fill(0);
+        degurbaDataSet = prepareDegurbaDataSet(degurbaDataSet);
+        elections2015ByGminasDataSet = prepareElectionsByGminasDataSet(elections2015ByGminasDataSet);
 
         Dataset<Row> gminasWithDegurba = elections2015ByGminasDataSet
                 .join(
@@ -78,7 +43,6 @@ public class App
         gminasWithDegurba = gminasWithDegurba.withColumn("DGURBA_INT", col("DGURBA").cast("integer"));
 
         Dataset<Row> df = gminasWithDegurba
-                .na().fill(0, new String[]{"DGURBA_INT"})
                 .select(col("DGURBA_INT"), col("PiS%"), col("PO%"), col("Razem%"),
                         col("Korwin%"), col("PSL%"), col("SLD%"), col("Kukiz%"),
                         col("N%"));
@@ -104,5 +68,34 @@ public class App
             }
             System.out.println();
         }
+    }
+
+    private Dataset<Row> prepareDegurbaDataSet(Dataset<Row> degurbaDataSet) {
+        return DegurbaTransformer.of(degurbaDataSet)
+                .filterByCountry("PL")
+                .transformToTERCtoDEGURBATable()
+                .get();
+    }
+
+    private Dataset<Row> prepareElectionsByGminasDataSet(Dataset<Row> elections2015ByGminasDataSet) {
+        return GminasDataTransformer.of(elections2015ByGminasDataSet)
+                .transformVotesColumn("Głosy ważne", "TOTAL_VOTES")
+                .transformVotesColumn("1 - Komitet Wyborczy Prawo i Sprawiedliwość", "PiS")
+                .calculateVoteShareForParty("PiS", "TOTAL_VOTES")
+                .transformVotesColumn("2 - Komitet Wyborczy Platforma Obywatelska RP", "PO")
+                .calculateVoteShareForParty("PO", "TOTAL_VOTES")
+                .transformVotesColumn("3 - Komitet Wyborczy Partia Razem", "Razem")
+                .calculateVoteShareForParty("Razem", "TOTAL_VOTES")
+                .transformVotesColumn("4 - Komitet Wyborczy KORWiN", "Korwin")
+                .calculateVoteShareForParty("Korwin", "TOTAL_VOTES")
+                .transformVotesColumn("5 - Komitet Wyborczy Polskie Stronnictwo Ludowe", "PSL")
+                .calculateVoteShareForParty("PSL", "TOTAL_VOTES")
+                .transformVotesColumn("6 - Koalicyjny Komitet Wyborczy Zjednoczona Lewica SLD+TR+PPS+UP+Zieloni", "SLD")
+                .calculateVoteShareForParty("SLD", "TOTAL_VOTES")
+                .transformVotesColumn("7 - Komitet Wyborczy Wyborców „Kukiz'15”", "Kukiz")
+                .calculateVoteShareForParty("Kukiz", "TOTAL_VOTES")
+                .transformVotesColumn("8 - Komitet Wyborczy Nowoczesna Ryszarda Petru", "N")
+                .calculateVoteShareForParty("N", "TOTAL_VOTES")
+                .get();
     }
 }
