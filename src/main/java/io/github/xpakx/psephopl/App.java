@@ -2,6 +2,7 @@ package io.github.xpakx.psephopl;
 
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.stat.Correlation;
+import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -36,27 +37,43 @@ public class App
                 .option("header", "true")
                 .load("src/main/resources/DGURBA_PT_2014.csv");
         degurbaDataSet = degurbaDataSet
-                .filter(degurbaDataSet.col("CNTR_CODE").equalTo("PL"));
+                .filter(col("CNTR_CODE").equalTo("PL"));
         degurbaDataSet = degurbaDataSet
-                .withColumn("TERC",
-                        concat(
-                                substring(degurbaDataSet.col("NSI"),2,2),
-                                substring(degurbaDataSet.col("NSI"),6,4)
-                        ))
+                .withColumn("TERC", transformLAU2ToTERC("NSI"))
                 .withColumnRenamed("DGURBA_CLA", "DGURBA")
                 .drop("CNTR_CODE")
                 .drop("NSI")
                 .drop("LAU_CODE");
 
+
         elections2015ByGminasDataSet = elections2015ByGminasDataSet
-                .withColumn("PiS", col("1 - Komitet Wyborczy Prawo i Sprawiedliwość").cast("integer"))
-                .withColumn("PO", col("2 - Komitet Wyborczy Platforma Obywatelska RP").cast("integer"))
-                .withColumn("Razem", col("3 - Komitet Wyborczy Partia Razem").cast("integer"))
-                .withColumn("Korwin", col("4 - Komitet Wyborczy KORWiN").cast("integer"))
-                .withColumn("PSL", col("5 - Komitet Wyborczy Polskie Stronnictwo Ludowe").cast("integer"))
-                .withColumn("SLD", col("6 - Koalicyjny Komitet Wyborczy Zjednoczona Lewica SLD+TR+PPS+UP+Zieloni").cast("integer"))
-                .withColumn("Kukiz", col("7 - Komitet Wyborczy Wyborców „Kukiz'15”").cast("integer"))
+                .withColumn("PiS", colToInt("1 - Komitet Wyborczy Prawo i Sprawiedliwość"))
+                .drop("1 - Komitet Wyborczy Prawo i Sprawiedliwość")
+                .withColumn("PO", colToInt("2 - Komitet Wyborczy Platforma Obywatelska RP"))
+                .drop("2 - Komitet Wyborczy Platforma Obywatelska RP")
+                .withColumn("Razem", colToInt("3 - Komitet Wyborczy Partia Razem"))
+                .drop("3 - Komitet Wyborczy Partia Razem")
+                .withColumn("Korwin", colToInt("4 - Komitet Wyborczy KORWiN"))
+                .drop("4 - Komitet Wyborczy KORWiN")
+                .withColumn("PSL", colToInt("5 - Komitet Wyborczy Polskie Stronnictwo Ludowe"))
+                .drop("5 - Komitet Wyborczy Polskie Stronnictwo Ludowe")
+                .withColumn("SLD", colToInt("6 - Koalicyjny Komitet Wyborczy Zjednoczona Lewica SLD+TR+PPS+UP+Zieloni"))
+                .drop("6 - Koalicyjny Komitet Wyborczy Zjednoczona Lewica SLD+TR+PPS+UP+Zieloni")
+                .withColumn("Kukiz", colToInt("7 - Komitet Wyborczy Wyborców „Kukiz'15”"))
+                .drop("7 - Komitet Wyborczy Wyborców „Kukiz'15”")
+                .withColumn("TOTAL_VOTES", colToInt("Głosy ważne"))
+                .drop("Głosy ważne")
                 .na().fill(0, new String[]{"PiS", "PO", "Razem", "Korwin", "PSL", "SLD", "Kukiz"});
+
+        elections2015ByGminasDataSet = elections2015ByGminasDataSet
+                .withColumn("PiS%", col("PiS").divide(col("TOTAL_VOTES")))
+                .withColumn("PO%", col("PO").divide(col("TOTAL_VOTES")))
+                .withColumn("Razem%", col("Razem").divide(col("TOTAL_VOTES")))
+                .withColumn("Korwin%", col("Korwin").divide(col("TOTAL_VOTES")))
+                .withColumn("PSL%", col("PSL").divide(col("TOTAL_VOTES")))
+                .withColumn("SLD%", col("SLD").divide(col("TOTAL_VOTES")))
+                .withColumn("Kukiz%", col("Kukiz").divide(col("TOTAL_VOTES")))
+                .na().fill(0);
 
         System.out.println(degurbaDataSet.count());
         Dataset<Row> gminasWithDegurba = elections2015ByGminasDataSet
@@ -71,16 +88,29 @@ public class App
 
         Dataset<Row> df = gminasWithDegurba
                 .na().fill(0, new String[]{"DGURBA_INT"})
-                .select(col("DGURBA_INT"), col("PiS"), col("PO"), col("Razem"),
-                        col("Korwin"), col("PSL"), col("SLD"), col("Kukiz"));
+                .select(col("DGURBA_INT"), col("PiS%"), col("PO%"), col("Razem%"),
+                        col("Korwin%"), col("PSL%"), col("SLD%"), col("Kukiz%"));
 
         VectorAssembler degurbaVectorAssembler = new VectorAssembler();
-        degurbaVectorAssembler.setInputCols(new String[]{"DGURBA_INT", "PiS", "PO", "Razem", "Korwin", "PSL", "SLD", "Kukiz"});
+        degurbaVectorAssembler.setInputCols(new String[]{"DGURBA_INT", "PiS%", "PO%", "Razem%", "Korwin%", "PSL%", "SLD%", "Kukiz%"});
         degurbaVectorAssembler.setOutputCol("features");
         Dataset<Row> newDataSet = degurbaVectorAssembler.transform(df);
 
         Row corr = Correlation.corr(newDataSet, "features", "pearson").head();
         System.out.println(corr.get(0));
 
+    }
+
+    private Column transformLAU2ToTERC(String columnName) {
+        return concat(
+                substring(col(columnName),2,2),
+                substring(col(columnName),6,4)
+        );
+    }
+
+    private Column colToInt(String name) {
+        return regexp_replace(
+                col(name), " ", "")
+                .cast("integer");
     }
 }
