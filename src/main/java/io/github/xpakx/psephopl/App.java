@@ -1,5 +1,6 @@
 package io.github.xpakx.psephopl;
 
+import org.apache.spark.ml.linalg.DenseMatrix;
 import io.github.xpakx.psephopl.utils.DataLoader;
 import io.github.xpakx.psephopl.utils.DegurbaTransformer;
 import org.apache.spark.ml.feature.VectorAssembler;
@@ -10,6 +11,7 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
 import static org.apache.spark.sql.functions.*;
+import static io.github.xpakx.psephopl.utils.ColumnFunctions.*;
 
 public class App 
 {
@@ -29,9 +31,10 @@ public class App
         Dataset<Row> elections2015ByElectoralDistrictDataSet = loader.loadFromCsv("2015-gl-lis-okr.csv");
         Dataset<Row> degurbaDataSet = loader.loadFromCsv("DGURBA_PT_2014.csv");
 
-        DegurbaTransformer dgurbaTrans = new DegurbaTransformer();
-        degurbaDataSet = dgurbaTrans.filterByCountry(degurbaDataSet, "PL");
-        degurbaDataSet = dgurbaTrans.transformToTERCtoDEGURBATable(degurbaDataSet);
+        degurbaDataSet = DegurbaTransformer.of(degurbaDataSet)
+                .filterByCountry("PL")
+                .transformToTERCtoDEGURBATable()
+                .get();
 
 
         elections2015ByGminasDataSet = elections2015ByGminasDataSet
@@ -49,9 +52,11 @@ public class App
                 .drop("6 - Koalicyjny Komitet Wyborczy Zjednoczona Lewica SLD+TR+PPS+UP+Zieloni")
                 .withColumn("Kukiz", colToInt("7 - Komitet Wyborczy Wyborców „Kukiz'15”"))
                 .drop("7 - Komitet Wyborczy Wyborców „Kukiz'15”")
+                .withColumn("N", colToInt("8 - Komitet Wyborczy Nowoczesna Ryszarda Petru"))
+                .drop("8 - Komitet Wyborczy Nowoczesna Ryszarda Petru")
                 .withColumn("TOTAL_VOTES", colToInt("Głosy ważne"))
                 .drop("Głosy ważne")
-                .na().fill(0, new String[]{"PiS", "PO", "Razem", "Korwin", "PSL", "SLD", "Kukiz"});
+                .na().fill(0, new String[]{"PiS", "PO", "Razem", "Korwin", "PSL", "SLD", "Kukiz", "N"});
 
         elections2015ByGminasDataSet = elections2015ByGminasDataSet
                 .withColumn("PiS%", col("PiS").divide(col("TOTAL_VOTES")))
@@ -61,9 +66,9 @@ public class App
                 .withColumn("PSL%", col("PSL").divide(col("TOTAL_VOTES")))
                 .withColumn("SLD%", col("SLD").divide(col("TOTAL_VOTES")))
                 .withColumn("Kukiz%", col("Kukiz").divide(col("TOTAL_VOTES")))
+                .withColumn("N%", col("N").divide(col("TOTAL_VOTES")))
                 .na().fill(0);
 
-        System.out.println(degurbaDataSet.count());
         Dataset<Row> gminasWithDegurba = elections2015ByGminasDataSet
                 .join(
                         degurbaDataSet,
@@ -71,27 +76,33 @@ public class App
                         "inner"
                 );
         gminasWithDegurba = gminasWithDegurba.withColumn("DGURBA_INT", col("DGURBA").cast("integer"));
-        gminasWithDegurba.show(5);
-        System.out.println(gminasWithDegurba.count());
 
         Dataset<Row> df = gminasWithDegurba
                 .na().fill(0, new String[]{"DGURBA_INT"})
                 .select(col("DGURBA_INT"), col("PiS%"), col("PO%"), col("Razem%"),
-                        col("Korwin%"), col("PSL%"), col("SLD%"), col("Kukiz%"));
+                        col("Korwin%"), col("PSL%"), col("SLD%"), col("Kukiz%"),
+                        col("N%"));
 
         VectorAssembler degurbaVectorAssembler = new VectorAssembler();
-        degurbaVectorAssembler.setInputCols(new String[]{"DGURBA_INT", "PiS%", "PO%", "Razem%", "Korwin%", "PSL%", "SLD%", "Kukiz%"});
+        degurbaVectorAssembler.setInputCols(new String[]{"DGURBA_INT", "PiS%", "PO%", "Razem%", "Korwin%", "PSL%", "SLD%", "Kukiz%", "N%"});
         degurbaVectorAssembler.setOutputCol("features");
         Dataset<Row> newDataSet = degurbaVectorAssembler.transform(df);
 
         Row corr = Correlation.corr(newDataSet, "features", "pearson").head();
-        System.out.println(corr.get(0));
 
-    }
-
-    private Column colToInt(String name) {
-        return regexp_replace(
-                col(name), " ", "")
-                .cast("integer");
+        String[] tst = new String[]{"DGUR", "PiS", "PO", "Raz", "Kor", "PSL", "SLD", "Kuk", "N"};
+        DenseMatrix corrMatrix = (DenseMatrix) corr.get(0);
+        System.out.print("      ");
+        for(int i=0; i<9; i++ ){
+            System.out.printf("%5s ", tst[i]);
+        }
+        System.out.println();
+        for(int i=0; i<9; i++) {
+            System.out.printf("%5s ", tst[i]);
+            for(int j=0; j<9; j++ ){
+                System.out.printf("%5.2f ", corrMatrix.apply(i, j));
+            }
+            System.out.println();
+        }
     }
 }
