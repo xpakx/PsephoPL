@@ -1,5 +1,7 @@
 package io.github.xpakx.psephopl;
 
+import io.github.xpakx.psephopl.utils.DataLoader;
+import io.github.xpakx.psephopl.utils.DegurbaTransformer;
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.stat.Correlation;
 import org.apache.spark.sql.Column;
@@ -21,29 +23,15 @@ public class App
         SparkSession session = SparkSession.builder()
                 .master("local")
                 .getOrCreate();
+        DataLoader loader = new DataLoader(session);
 
-        Dataset<Row> elections2015ByGminasDataSet = session.read()
-                .format("csv")
-                .option("header", "true")
-                .load("src/main/resources/2015-gl-lis-gm.csv");
+        Dataset<Row> elections2015ByGminasDataSet = loader.loadFromCsv("2015-gl-lis-gm.csv");
+        Dataset<Row> elections2015ByElectoralDistrictDataSet = loader.loadFromCsv("2015-gl-lis-okr.csv");
+        Dataset<Row> degurbaDataSet = loader.loadFromCsv("DGURBA_PT_2014.csv");
 
-        Dataset<Row> elections2015ByElectoralDistrictDataSet = session.read()
-                .format("csv")
-                .option("header", "true")
-                .load("src/main/resources/2015-gl-lis-okr.csv");
-
-        Dataset<Row> degurbaDataSet = session.read()
-                .format("csv")
-                .option("header", "true")
-                .load("src/main/resources/DGURBA_PT_2014.csv");
-        degurbaDataSet = degurbaDataSet
-                .filter(col("CNTR_CODE").equalTo("PL"));
-        degurbaDataSet = degurbaDataSet
-                .withColumn("TERC", transformLAU2ToTERC("NSI"))
-                .withColumnRenamed("DGURBA_CLA", "DGURBA")
-                .drop("CNTR_CODE")
-                .drop("NSI")
-                .drop("LAU_CODE");
+        DegurbaTransformer dgurbaTrans = new DegurbaTransformer();
+        degurbaDataSet = dgurbaTrans.filterByCountry(degurbaDataSet, "PL");
+        degurbaDataSet = dgurbaTrans.transformToTERCtoDEGURBATable(degurbaDataSet);
 
 
         elections2015ByGminasDataSet = elections2015ByGminasDataSet
@@ -99,13 +87,6 @@ public class App
         Row corr = Correlation.corr(newDataSet, "features", "pearson").head();
         System.out.println(corr.get(0));
 
-    }
-
-    private Column transformLAU2ToTERC(String columnName) {
-        return concat(
-                substring(col(columnName),2,2),
-                substring(col(columnName),6,4)
-        );
     }
 
     private Column colToInt(String name) {
